@@ -146,3 +146,102 @@ class CriarUsuarioSenhaTests(TestCase):
 
     def test_senha_em_branco_e_recusada(self):
         self.assert_senha_recusada('        ')
+
+
+URL_TROCAR_SENHA = reverse('trocar_senha')
+
+
+class TrocarSenhaTests(TestCase):
+    """Usuário logado troca a própria senha (MVP-ACE-10)."""
+
+    def setUp(self):
+        self.usuario = Usuario.objects.create_user(
+            'maria@escola.com', 'Maria das Trilhas', 'senha-antiga-123',
+            papel=Usuario.Papel.PROFESSOR,
+        )
+        self.client.force_login(self.usuario)
+
+    def dados(self, **extra):
+        """POST válido para trocar a senha; `extra` sobrescreve campos."""
+        return {
+            'senha_atual': 'senha-antiga-123',
+            'nova_senha': 'nova-senha-forte-456',
+            'confirmar_nova_senha': 'nova-senha-forte-456',
+            **extra,
+        }
+
+    def test_exige_login(self):
+        self.client.logout()
+        resposta = self.client.get(URL_TROCAR_SENHA)
+        self.assertRedirects(resposta, f"{reverse('login')}?next={URL_TROCAR_SENHA}")
+
+    def test_todos_os_papeis_acessam_a_pagina(self):
+        for papel in (Usuario.Papel.ADMIN, Usuario.Papel.IS,
+                      Usuario.Papel.PROFESSOR, Usuario.Papel.EMPREENDEDOR):
+            with self.subTest(papel=papel):
+                usuario = Usuario.objects.create_user(
+                    f'{papel}-conta@sgis.com', 'Teste', 'senha-antiga-123', papel=papel,
+                )
+                self.client.force_login(usuario)
+                self.assertEqual(self.client.get(URL_TROCAR_SENHA).status_code, 200)
+                self.client.logout()
+
+    def test_senha_atual_incorreta_e_recusada(self):
+        resposta = self.client.post(URL_TROCAR_SENHA, self.dados(senha_atual='errada-123'))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(resposta.context['form'].has_error('senha_atual'))
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.check_password('senha-antiga-123'))
+
+    def test_confirmacao_divergente_e_recusada(self):
+        resposta = self.client.post(URL_TROCAR_SENHA, self.dados(
+            confirmar_nova_senha='outra-senha-789',
+        ))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(resposta.context['form'].has_error('confirmar_nova_senha'))
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.check_password('senha-antiga-123'))
+
+    def test_nova_senha_igual_a_atual_e_recusada(self):
+        resposta = self.client.post(URL_TROCAR_SENHA, self.dados(
+            nova_senha='senha-antiga-123', confirmar_nova_senha='senha-antiga-123',
+        ))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(resposta.context['form'].has_error('nova_senha'))
+
+    def test_nova_senha_fraca_e_recusada(self):
+        for senha in ('password', '1234', 'mariadas'):
+            with self.subTest(senha=senha):
+                resposta = self.client.post(URL_TROCAR_SENHA, self.dados(
+                    nova_senha=senha, confirmar_nova_senha=senha,
+                ))
+
+                self.assertEqual(resposta.status_code, 200)
+                self.assertTrue(resposta.context['form'].has_error('nova_senha'))
+                self.usuario.refresh_from_db()
+                self.assertTrue(self.usuario.check_password('senha-antiga-123'))
+
+    def test_senha_alterada_e_salva_com_hash(self):
+        resposta = self.client.post(URL_TROCAR_SENHA, self.dados())
+
+        self.assertRedirects(resposta, URL_TROCAR_SENHA)
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.check_password('nova-senha-forte-456'))
+        self.assertNotEqual(self.usuario.password, 'nova-senha-forte-456')
+
+    def test_sessao_permanece_ativa_apos_a_troca(self):
+        self.client.post(URL_TROCAR_SENHA, self.dados())
+
+        resposta = self.client.get(URL_TROCAR_SENHA)
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(resposta.context['user'].is_authenticated)
+
+    def test_login_so_funciona_com_a_senha_nova(self):
+        self.client.post(URL_TROCAR_SENHA, self.dados())
+        self.client.logout()
+
+        self.assertFalse(self.client.login(email='maria@escola.com', password='senha-antiga-123'))
+        self.assertTrue(self.client.login(email='maria@escola.com', password='nova-senha-forte-456'))

@@ -1,10 +1,10 @@
 from django.contrib import messages
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from .decorators import papel_requerido
-from .forms import LoginForm, UsuarioCadastroForm
+from .forms import LoginForm, TrocarSenhaForm, UsuarioCadastroForm
 from .models import Usuario
 
 
@@ -46,3 +46,19 @@ def criar_usuario_view(request):
         return redirect('criar_usuario')
 
     return render(request, 'usuarios/criar_usuario.html', {'form': form})
+
+
+@login_required
+def trocar_senha_view(request):
+    """Usuário logado troca a própria senha (qualquer papel)."""
+    form = TrocarSenhaForm(request.POST or None, user=request.user)
+
+    if request.method == 'POST' and form.is_valid():
+        request.user.set_password(form.cleaned_data['nova_senha'])
+        request.user.save(update_fields=['password'])
+        # O hash do usuário mudou: sem isto a sessão atual seria encerrada.
+        update_session_auth_hash(request, request.user)
+        messages.success(request, 'Senha alterada com sucesso.')
+        return redirect('trocar_senha')
+
+    return render(request, 'usuarios/trocar_senha.html', {'form': form})

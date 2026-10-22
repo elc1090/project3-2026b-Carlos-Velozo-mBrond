@@ -133,3 +133,64 @@ class UsuarioCadastroForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+
+class TrocarSenhaForm(forms.Form):
+    """Troca da própria senha pelo usuário logado.
+
+    Exige a senha atual (evita trocar senha de quem deixou a sessão aberta)
+    e passa a nova senha pelos mesmos validadores do settings.
+    """
+
+    senha_atual = forms.CharField(
+        label='Senha atual',
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Sua senha atual',
+            'autocomplete': 'current-password',
+            'class': CLASSES_INPUT,
+        }),
+    )
+    nova_senha = forms.CharField(
+        label='Nova senha',
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Nova senha',
+            'autocomplete': 'new-password',
+            'class': CLASSES_INPUT,
+        }),
+        help_text='Combine letras e números, com pelo menos 8 caracteres.',
+    )
+    confirmar_nova_senha = forms.CharField(
+        label='Confirmar nova senha',
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Repita a nova senha',
+            'autocomplete': 'new-password',
+            'class': CLASSES_INPUT,
+        }),
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned = super().clean()
+        senha_atual = cleaned.get('senha_atual')
+        nova_senha = cleaned.get('nova_senha')
+        confirmacao = cleaned.get('confirmar_nova_senha')
+
+        if senha_atual and self.user and not self.user.check_password(senha_atual):
+            self.add_error('senha_atual', 'Senha atual incorreta.')
+
+        if nova_senha and confirmacao and nova_senha != confirmacao:
+            self.add_error('confirmar_nova_senha', 'As senhas não conferem.')
+
+        if nova_senha and self.user and self.user.check_password(nova_senha):
+            self.add_error('nova_senha', 'A nova senha deve ser diferente da atual.')
+
+        if nova_senha:
+            try:
+                validate_password(nova_senha, user=self.user)
+            except forms.ValidationError as erro:
+                self.add_error('nova_senha', erro)
+
+        return cleaned

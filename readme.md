@@ -1,10 +1,10 @@
 # Projeto: SGIS — Sistema de Gestão da Incubadora Social
 
-![GIF animado do projeto — Substitua por um GIF/WEBP gravado da aplicação em uso](./demo.gif "GIF animado do SGIS em uso")
+![GIF animado do projeto](./demonstracao.gif "GIF animado do SGIS em uso")
 
 ## Acesso
 
-> **TODO:** [URL do app publicado](https://TODO-deploy) — publicar em infraestrutura gratuita (ex.: Render) e colar aqui + na seção "About" do repositório.
+link:
 
 ## Desenvolvedores
 
@@ -45,7 +45,7 @@ papel de organizar o trabalho. Dividia as regras de negócio em tasks pequenas e
 repassava para equipe. A equipe executava essas tasks e revisava os documentos
 de reguas de negócio para entender o que o sistema precisava antes de codar.
 
-Dificuldades por carlos:
+Dificuldades por Carlos:
 A maior dificuldade que eu tive foi justamente essa: me integrar ao projeto e
 entender as regras de negócio. Como várias decisões já estavam tomadas quando eu
 entrei, precisei entender o "porquê" de cada uma antes de mexer.
@@ -87,26 +87,33 @@ entrei, precisei entender o "porquê" de cada uma antes de mexer.
        )
    ```
 
-3. **`trilhas/models.py` — a constraint da inscrição única**
+3. **`usuarios/views.py` — a troca de senha sem deslogar o usuário**
 
-   Regra da incubadora: um empreendimento só pode estar inscrito uma vez em cada trilha, mas se cancelar a inscrição ele pode se inscrever outra vez. A gente tentou resolver isso só na view, aí percebeu que dava pra "trapacear" passando direto pelo admin e duplicar registro. Colocando a constraint no banco com `condition=~models.Q(status='cancelada')`, o histórico das inscrições canceladas fica guardado e mesmo assim não deixa existir duas ativas ao mesmo tempo.
+   A aba "Minha conta" (`/conta/senha/`) deixa qualquer usuário logado trocar a própria senha, sem precisar passar pela IS. O detalhe que mais deu trabalho foi manter a sessão viva depois da troca: o Django guarda no cookie de sessão um hash da senha do usuário, então assim que a senha muda esse hash deixa de bater e a pessoa seria jogada para a tela de login no meio da própria troca. A solução é o `update_session_auth_hash`, que refaz esse hash dentro da sessão atual. O resto é o `set_password` (guarda com hash, nunca em texto puro) e a validação no formulário: a senha atual precisa estar certa, a confirmação tem que bater com a nova e a nova senha passa pelos validadores do `AUTH_PASSWORD_VALIDATORS` (tamanho mínimo, senha muito comum, só números e parecida com o e-mail).
 
    ```python
-   class Meta:
-       constraints = [
-           models.UniqueConstraint(
-               fields=['empreendimento', 'trilha'],
-               condition=~models.Q(status='cancelada'),
-               name='inscricao_unica_nao_cancelada',
-           ),
-       ]
+   @login_required
+   def trocar_senha_view(request):
+       """Usuário logado troca a própria senha (qualquer papel)."""
+       form = TrocarSenhaForm(request.POST or None, user=request.user)
+
+       if request.method == 'POST' and form.is_valid():
+           request.user.set_password(form.cleaned_data['nova_senha'])
+           request.user.save(update_fields=['password'])
+           # O hash do usuário mudou: sem isto a sessão atual seria encerrada.
+           update_session_auth_hash(request, request.user)
+           messages.success(request, 'Senha alterada com sucesso.')
+           return redirect('trocar_senha')
+
+       return render(request, 'usuarios/trocar_senha.html', {'form': form})
    ```
+
 ## Tecnologias
 
 ### Linguagens e afins
 
 - **Python 3.13** — linguagem do backend
-- **Django 5.1** — framework web full-stack (ORM, templates, migrations, admin, sessões, testes)
+- **Django 6.1** — framework web full-stack (ORM, templates, migrations, admin, sessões, testes)
 - **HTML** com **Django Template Language** — páginas server-side
 - **Tailwind CSS** (via CDN) — estilização utilitária, sem build
 - **SQLite** — banco de dados (padrão do Django, trocável por Postgres/MySQL)
@@ -117,6 +124,7 @@ entrei, precisei entender o "porquê" de cada uma antes de mexer.
 - **Autenticação por sessão** (cookie de sessão gerenciado pelo `django.contrib.sessions`) — não usamos tokens/JWT, pois o app é 100% server-rendered.
 - **Modelo de usuário customizado** (`AUTH_USER_MODEL = 'usuarios.Usuario'`): login pelo **e-mail**, não por username, com senha armazenada com hash (PBKDF2) via `set_password`. A migration `0002` cria um usuário IS padrão para o primeiro acesso.
 - **Cadastro pela interface**: a IS cria contas de professor/empreendimento em `/usuarios/novo/`, definindo a senha inicial.
+- **Troca de senha pelo próprio usuário**: aba "Minha conta" em `/conta/senha/`, disponível para todos os papéis logados. Exige a senha atual, confirma a nova e passa a senha pelos validadores do Django; a sessão continua ativa depois da troca (`update_session_auth_hash`).
 - **Autorização por papel** (`admin`, `is`, `professor`, `empreendimento`): decorator `papel_requerido` em toda view; usuário de outro papel recebe 403 e anônimo é redirecionado ao login (inclusive em URLs inexistentes).
 - **Defesa em profundidade**: o formulário de cadastro restringe os papéis criáveis no servidor (a IS não cria IS/admin nem forjando o POST), e o CSRF token é exigido em todos os POSTs.
 
@@ -126,7 +134,7 @@ entrei, precisei entender o "porquê" de cada uma antes de mexer.
 - **Python 3.13** com ambiente virtual (`.venv`)
 - **Terminal integrada do VS Code** para comandos `manage.py`
 - **Django admin** (`/admin/`) para inspeção/ajuste rápido de dados durante o desenvolvimento
-- **Testes automatizados** do Django (`python manage.py test`) — 33 testes cobrindo permissões, trilhas e inscrições
+- **Testes automatizados** do Django (`python manage.py test`) — 50 testes cobrindo permissões, trilhas, inscrições e troca de senha
 - **GitHub** com trabalho em branches + pull requests
 - **Auxílio de IA** (OpenCode) para dúvidas pontuais de sintaxe e revisão — sempre validando o resultado com os testes e a documentação oficial
 

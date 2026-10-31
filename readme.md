@@ -4,7 +4,7 @@
 
 ## Acesso
 
-link: [Deploy no render](https://github.com/IS-UFSM/SGIS/deployments/deploy-render%20-%20sgis)
+link: [Deploy no render]([https://github.com/IS-UFSM/SGIS/deployments/deploy-render%20-%20sgis](https://sgis-1c45.onrender.com/))
 
 ## Desenvolvedores
 

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block titulo %}{{ trilha.titulo }} — SGIS{% endblock %}
+
+{% block conteudo %}
+{% include 'partials/header.html' %}
+
+<main class="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+  <a href="{% url 'home' %}" class="text-sm font-medium text-slate-500 hover:text-brand">&larr; Início</a>
+
+  {% for mensagem in messages %}
+    <div class="mt-4 p-4 rounded-xl text-sm {% if mensagem.tags == 'error' %}bg-red-50 border border-red-200 text-red-700{% else %}bg-emerald-50 border border-emerald-200 text-emerald-800{% endif %}" role="status">
+      {{ mensagem }}
+    </div>
+  {% endfor %}
+
+  <section class="mt-4 bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+    <div class="flex flex-wrap items-center gap-2">
+      {% if trilha.e_de_etapa %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">Etapa: {{ trilha.get_etapa_display }}</span>
+      {% else %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">Personalizada</span>
+      {% endif %}
+      {% if trilha.status == 'rascunho' %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">{{ trilha.get_status_display }}</span>
+      {% elif trilha.status == 'publicada' %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">{{ trilha.get_status_display }}</span>
+      {% else %}
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-200 text-slate-600">{{ trilha.get_status_display }}</span>
+      {% endif %}
+    </div>
+
+    <h1 class="mt-3 text-2xl font-bold text-slate-900">{{ trilha.titulo }}</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      {% if trilha.e_de_etapa %}Trilha da Incubadora Social{% else %}Dono: <span class="font-medium text-slate-700">{{ trilha.usuario_criador.nome }}</span>{% endif %}
+      {% if trilha.publicada_em %} · publicada em {{ trilha.publicada_em|date:"d/m/Y" }}{% endif %}
+      {% if trilha.arquivada_em %} · arquivada em {{ trilha.arquivada_em|date:"d/m/Y" }}{% endif %}
+    </p>
+    {% if trilha.descricao %}
+      <p class="mt-4 text-sm text-slate-700 whitespace-pre-line">{{ trilha.descricao }}</p>
+    {% endif %}
+
+    {% if pode_editar and exige_confirmacao %}
+      <p class="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-900" role="note">
+        Esta trilha é de <strong>{{ trilha.usuario_criador.nome }}</strong>. Cada alteração feita pela Incubadora Social pede confirmação.
+      </p>
+    {% endif %}
+    {% if pode_editar %}
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="{% url 'trilhas:editar' trilha.pk %}" class="py-2 px-4 text-sm font-semibold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition duration-150">
+          Editar
+        </a>
+        {% if pode_publicar %}
+          <form method="post" action="{% url 'trilhas:acao' trilha.pk 'publicar' %}">
+            {% csrf_token %}
+            <button type="submit" class="py-2 px-4 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-lg shadow-md shadow-brand/20 transition duration-150 cursor-pointer">
+              Publicar
+            </button>
+          </form>
+        {% endif %}
+        {% if pode_arquivar %}
+          <form method="post" action="{% url 'trilhas:acao' trilha.pk 'arquivar' %}"
+                onsubmit="return confirm('Arquivar esta trilha? Ela não poderá mais ser alterada.')">
+            {% csrf_token %}
+            <button type="submit" class="py-2 px-4 text-sm font-semibold text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition duration-150 cursor-pointer">
+              Arquivar
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="mt-8">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="font-semibold text-slate-900">Atividades ({{ ativas|length }})</h2>
+      {% if pode_editar %}
+        <a href="{% url 'trilhas:atividade_criar' trilha.pk %}" class="py-2 px-4 text-sm font-semibold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition duration-150">
+          + Nova atividade
+        </a>
+      {% endif %}
+    </div>
+
+    <ol class="mt-3 space-y-3">
+      {% for atividade in ativas %}
+        <li class="bg-white rounded-xl border border-slate-200/80 p-5 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <h3 class="font-semibold text-slate-900">{{ forloop.counter }}. {{ atividade.titulo }}</h3>
+            <span class="shrink-0 px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-700">{{ atividade.get_tipo_display }}</span>
+          </div>
+          {% if atividade.descricao %}
+            <p class="mt-2 text-sm text-slate-600 whitespace-pre-line">{{ atividade.descricao }}</p>
+          {% endif %}
+          {% if atividade.endereco %}
+            <p class="mt-2 text-sm"><a href="{{ atividade.endereco }}" target="_blank" rel="noopener noreferrer" class="text-brand hover:underline break-all">{{ atividade.endereco }}</a></p>
+          {% endif %}
+          <p class="mt-3 text-xs text-slate-500">
+            {% if atividade.obrigatoria %}Obrigatória{% else %}Opcional{% endif %}
+            · {% if atividade.exige_validacao %}exige validação{% else %}sem validação{% endif %}
+            {% if atividade.prazo_fixo %} · prazo: {{ atividade.prazo_fixo|date:"d/m/Y" }}{% endif %}
+            {% if atividade.dias_apos_inscricao %} · prazo: {{ atividade.dias_apos_inscricao }} dia{{ atividade.dias_apos_inscricao|pluralize }} após a inscrição{% endif %}
+          </p>
+          {% if pode_editar %}
+            <div class="mt-3 flex flex-wrap gap-2">
+              <a href="{% url 'trilhas:atividade_editar' atividade.pk %}" class="px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50">Editar</a>
+              {% if trilha.status == 'rascunho' %}
+                {% if not forloop.first %}
+                  <form method="post" action="{% url 'trilhas:atividade_mover' atividade.pk 'cima' %}">
+                    {% csrf_token %}
+                    <button type="submit" title="Mover para cima" aria-label="Mover {{ atividade.titulo }} para cima" class="px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 cursor-pointer">↑ Subir</button>
+                  </form>
+                {% endif %}
+                {% if not forloop.last %}
+                  <form method="post" action="{% url 'trilhas:atividade_mover' atividade.pk 'baixo' %}">
+                    {% csrf_token %}
+                    <button type="submit" title="Mover para baixo" aria-label="Mover {{ atividade.titulo }} para baixo" class="px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 cursor-pointer">↓ Descer</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+              {% if trilha.status == 'rascunho' %}
+                <form method="post" action="{% url 'trilhas:atividade_apagar' atividade.pk %}"
+                      onsubmit="return confirm('Apagar esta atividade?')">
+                  {% csrf_token %}
+                  <button type="submit" class="px-3 py-1.5 text-xs font-semibold text-red-700 border border-red-300 rounded-lg hover:bg-red-50 cursor-pointer">Apagar</button>
+                </form>
+              {% else %}
+                <form method="post" action="{% url 'trilhas:atividade_arquivar' atividade.pk %}"
+                      onsubmit="return confirm('Arquivar esta atividade? Ela sai da trilha, mas continua no histórico de quem já a fez.')">
+                  {% csrf_token %}
+                  <button type="submit" class="px-3 py-1.5 text-xs font-semibold text-red-700 border border-red-300 rounded-lg hover:bg-red-50 cursor-pointer">Arquivar</button>
+                </form>
+              {% endif %}
+            </div>
+          {% endif %}
+        </li>
+      {% empty %}
+        <li class="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-600">
+          Esta trilha ainda não tem atividades.
+        </li>
+      {% endfor %}
+    </ol>
+
+    {% if arquivadas %}
+      <details class="mt-6">
+        <summary class="cursor-pointer text-sm font-semibold text-slate-600">Atividades arquivadas ({{ arquivadas|length }})</summary>
+        <ul class="mt-3 space-y-2">
+          {% for atividade in arquivadas %}
+            <li class="text-sm text-slate-500">{{ atividade.titulo }} · arquivada em {{ atividade.arquivada_em|date:"d/m/Y" }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

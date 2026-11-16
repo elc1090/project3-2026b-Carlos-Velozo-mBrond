@@ -1,9 +1,10 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils import timezone
 
 from empreendimentos.models import Empreendimento
-from trilhas.models import Trilha
+from trilhas.models import AtividadeTrilha, Trilha
 from usuarios.models import Usuario
 
 
@@ -118,28 +119,56 @@ class Command(BaseCommand):
             status = 'criado' if created else 'ja existente'
             self.stdout.write(f'  [OK] Empreendimento: {emp.nome} ({status})')
 
-        # 3. Trilhas de mock
-        trilhas_data = [
-            {
-                'titulo': 'Trilha Base da Incubadora (Ciclo 1)',
-                'descricao': 'Passos essenciais para estruturacao do modelo de negocio e formalizacao basica.',
-                'tipo': Trilha.Tipo.PADRAO,
-                'usuario_criador': usuarios['is@sgis.com'],
-            },
-            {
-                'titulo': 'Mentoria de Precificacao e Custos',
+        # 3. Trilhas de mock: as de etapa já existem (migração trilhas/0007);
+        #    aqui ganham atividades e são publicadas, junto com uma trilha de professor.
+        L, T, R = AtividadeTrilha.Tipo.LINK, AtividadeTrilha.Tipo.TAREFA, AtividadeTrilha.Tipo.LEITURA
+        atividades_por_etapa = {
+            Trilha.Etapa.PRE_INCUBACAO: [
+                (R, 'Conhecer a Incubadora Social', '', 7),
+                (T, 'Descrever o empreendimento', '', 14),
+            ],
+            Trilha.Etapa.INCUBACAO: [
+                (T, 'Organizar entradas e saidas', '', 30),
+                (L, 'Guia de fluxo de caixa', 'https://www.sebrae.com.br/', None),
+            ],
+            Trilha.Etapa.DESINCUBACAO: [
+                (T, 'Plano de continuidade', '', 30),
+            ],
+        }
+        for etapa, atividades in atividades_por_etapa.items():
+            trilha = Trilha.objects.get(etapa=etapa)
+            self._preencher_e_publicar(trilha, atividades)
+            self.stdout.write(f'  [OK] Trilha de etapa: {trilha.titulo} ({trilha.get_status_display()})')
+
+        trilha_prof, _ = Trilha.objects.get_or_create(
+            titulo='Mentoria de Precificacao e Custos',
+            defaults={
                 'descricao': 'Trilha personalizada focada em definicao de precos, margem e fluxo de caixa.',
-                'tipo': Trilha.Tipo.CUSTOM,
                 'usuario_criador': usuarios['professor.carlos@sgis.com'],
             },
-        ]
-
-        for tr_info in trilhas_data:
-            trilha, created = Trilha.objects.get_or_create(
-                titulo=tr_info['titulo'],
-                defaults=tr_info,
-            )
-            status = 'criada' if created else 'ja existente'
-            self.stdout.write(f'  [OK] Trilha [{trilha.tipo}]: {trilha.titulo} ({status})')
+        )
+        self._preencher_e_publicar(trilha_prof, [
+            (R, 'Conceitos de custo fixo e variavel', '', 7),
+            (T, 'Calcular o preco de um produto', '', 14),
+        ])
+        self.stdout.write(f'  [OK] Trilha personalizada: {trilha_prof.titulo} ({trilha_prof.get_status_display()})')
 
         self.stdout.write(self.style.SUCCESS('\nDados de mock populados com sucesso!'))
+
+    def _preencher_e_publicar(self, trilha, atividades):
+        """Cria as atividades que faltam e publica a trilha, se ainda for rascunho."""
+        for ordem, (tipo, titulo, endereco, dias) in enumerate(atividades, start=1):
+            AtividadeTrilha.objects.get_or_create(
+                trilha=trilha,
+                titulo=titulo,
+                defaults={
+                    'tipo': tipo,
+                    'endereco': endereco,
+                    'ordem': ordem,
+                    'dias_apos_inscricao': dias,
+                },
+            )
+        if trilha.status == Trilha.Status.RASCUNHO:
+            trilha.status = Trilha.Status.PUBLICADA
+            trilha.publicada_em = timezone.now()
+            trilha.save(update_fields=['status', 'publicada_em'])

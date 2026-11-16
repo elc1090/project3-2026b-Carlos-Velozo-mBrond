@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block titulo %}{% if atividade %}Editar atividade{% else %}Nova atividade{% endif %} — SGIS{% endblock %}
+
+{% block conteudo %}
+{% include 'partials/header.html' %}
+
+<main class="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+  <a href="{% url 'trilhas:detalhe' trilha.pk %}" class="text-sm font-medium text-slate-500 hover:text-brand">&larr; {{ trilha.titulo }}</a>
+
+  <div class="mt-4 bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm">
+    <h1 class="text-2xl font-bold text-slate-900">{% if atividade %}Editar atividade{% else %}Nova atividade{% endif %}</h1>
+    {% if atividade and trilha.status == 'publicada' %}
+      <p class="text-slate-500 mt-1 text-sm">
+        A trilha já está publicada: só os textos podem mudar. Tipo, obrigatoriedade, validação e prazo
+        continuam como estão, porque já valem para quem está inscrito.
+      </p>
+    {% elif not atividade %}
+      <p class="text-slate-500 mt-1 text-sm">A atividade entra no fim da trilha.</p>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+      <div class="mt-6 p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700" role="alert">
+        {% for erro in form.non_field_errors %}<p>{{ erro }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" novalidate class="mt-6 space-y-5">
+      {% csrf_token %}
+
+      {% for campo in form %}
+        <div{% if campo.name == 'endereco' %} id="campo-endereco"{% endif %}>
+          <label for="{{ campo.id_for_label }}" class="block text-sm font-semibold text-slate-700 mb-1.5">
+            {{ campo.label }}{% if campo.field.required %} <span class="text-red-500">*</span>{% endif %}
+          </label>
+          {{ campo }}
+          {% if campo.errors %}
+            <p class="text-xs text-red-600 font-medium mt-1.5">{{ campo.errors.0 }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      {% if exige_confirmacao %}
+        {% include 'partials/confirmacao_is.html' %}
+      {% endif %}
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <a href="{% url 'trilhas:detalhe' trilha.pk %}" class="py-2.5 px-4 text-sm font-semibold text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition duration-150">
+          Cancelar
+        </a>
+        <button type="submit" class="py-2.5 px-4 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-lg shadow-md shadow-brand/20 active:scale-[0.99] transition duration-150 cursor-pointer">
+          {% if atividade %}Salvar{% else %}Acrescentar{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</main>
+
+<script>
+  // Só mostra o endereço para atividades do tipo Link. O servidor valida de qualquer forma.
+  (function () {
+    var tipo = document.getElementById('id_tipo');
+    var endereco = document.getElementById('campo-endereco');
+    if (!tipo || !endereco) return;
+    function atualizar() { endereco.hidden = tipo.value !== 'link'; }
+    tipo.addEventListener('change', atualizar);
+    atualizar();
+  })();
+</script>
+{% endblock %}

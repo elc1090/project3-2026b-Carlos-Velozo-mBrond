@@ -13,11 +13,14 @@
           Minhas trilhas
         </a>
       {% elif user.papel == 'is' %}
-        <a href="{% url 'criar_usuario' %}" class="text-sm font-medium text-slate-600 hover:text-brand transition duration-150">
+        <a href="{% url 'contas' %}" class="text-sm font-medium text-slate-600 hover:text-brand transition duration-150">
           Usuários
         </a>
         <a href="{% url 'trilhas:todas' %}" class="text-sm font-medium text-slate-600 hover:text-brand transition duration-150">
           Trilhas
+        </a>
+        <a href="{% url 'trilhas:criar' %}" class="text-sm font-medium text-slate-600 hover:text-brand transition duration-150">
+          Nova trilha
         </a>
         <a href="{% url 'trilhas:inscricoes' %}" class="text-sm font-medium text-slate-600 hover:text-brand transition duration-150">
           Inscrições

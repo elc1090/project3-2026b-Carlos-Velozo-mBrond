@@ -1,3 +1,5 @@
+> ⚠️ **Documento arquivado — não usar para implementar.** Substituído por [`SGIS_SPEC_MVP_v0.4.md`](../SGIS_SPEC_MVP_v0.4.md). Mantido apenas como registro histórico. Ver [`README.md`](README.md).
+
 # Modelagem textual do banco de dados — SGIS
 
 ## 1. Objetivo

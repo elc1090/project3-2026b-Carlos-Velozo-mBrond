@@ -2,18 +2,13 @@ from django import forms
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 
-from .models import Usuario
+from .models import Usuario, normalizar_email
 
 CLASSES_INPUT = (
     'w-full px-3.5 py-2.5 text-slate-800 bg-slate-50 border border-slate-300 '
     'rounded-lg focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 '
     'placeholder:text-slate-400 transition duration-150'
 )
-
-
-def normalizar_email(email):
-    """Emails são guardados e comparados sempre em minúsculas."""
-    return (email or '').strip().lower()
 
 
 class LoginForm(forms.Form):
@@ -126,14 +121,6 @@ class UsuarioCadastroForm(forms.ModelForm):
                 self.add_error('senha', erro)
         return cleaned
 
-    def save(self, commit=True):
-        """Cria o usuário com a senha já criptografada."""
-        user = super().save(commit=False)
-        user.set_password(self.cleaned_data['senha'])
-        if commit:
-            user.save()
-        return user
-
 
 class TrocarSenhaForm(forms.Form):
     """Troca da própria senha pelo usuário logado.
@@ -157,7 +144,7 @@ class TrocarSenhaForm(forms.Form):
             'autocomplete': 'new-password',
             'class': CLASSES_INPUT,
         }),
-        help_text='Combine letras e números, com pelo menos 8 caracteres.',
+        help_text='Combine letras e números, com pelo menos 10 caracteres.',
     )
     confirmar_nova_senha = forms.CharField(
         label='Confirmar nova senha',
@@ -194,3 +181,44 @@ class TrocarSenhaForm(forms.Form):
                 self.add_error('nova_senha', erro)
 
         return cleaned
+
+class UsuarioEdicaoForm(forms.ModelForm):
+    """ACE-09: a IS edita nome e e-mail. O papel fica fora, então um valor forjado é ignorado (A-15)."""
+
+    class Meta:
+        model = Usuario
+        fields = ['nome', 'email']
+        labels = {'nome': 'Nome completo'}
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': CLASSES_INPUT}),
+            'email': forms.EmailInput(attrs={'autocomplete': 'email', 'class': CLASSES_INPUT}),
+        }
+
+    def clean_email(self):
+        email = normalizar_email(self.cleaned_data['email'])
+        if Usuario.objects.filter(email__iexact=email).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError('Já existe um usuário com este email.')
+        return email
+
+
+class RedefinirSenhaForm(forms.Form):
+    """ACE-08: a IS define uma senha nova, que passa pelos mesmos validadores (3.4.1)."""
+
+    nova_senha = forms.CharField(
+        label='Nova senha',
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Senha nova da conta',
+            'autocomplete': 'new-password',
+            'class': CLASSES_INPUT,
+        }),
+        help_text='Combine letras e números, com pelo menos 10 caracteres.',
+    )
+
+    def __init__(self, *args, conta, **kwargs):
+        self.conta = conta
+        super().__init__(*args, **kwargs)
+
+    def clean_nova_senha(self):
+        senha = self.cleaned_data['nova_senha']
+        validate_password(senha, user=self.conta)
+        return senha

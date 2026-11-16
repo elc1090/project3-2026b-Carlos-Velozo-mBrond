@@ -21,7 +21,7 @@
 
       <article class="bg-white rounded-xl border border-slate-200/80 p-5 shadow-sm {% if inscricao.status == 'pausada' %}opacity-75{% endif %}">
         <div class="flex items-start justify-between gap-3">
-          <h3 class="font-semibold text-slate-900">{{ inscricao.trilha.titulo }}</h3>
+          <h3 class="font-semibold text-slate-900"><a href="{% url 'trilhas:detalhe' inscricao.trilha.pk %}" class="hover:text-brand hover:underline">{{ inscricao.trilha.titulo }}</a></h3>
           {% if inscricao.status == 'ativa' %}
             <span class="shrink-0 px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">{{ inscricao.get_status_display }}</span>
           {% else %}

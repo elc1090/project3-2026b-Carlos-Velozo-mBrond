@@ -1,18 +1,27 @@
 {% extends "base.html" %}
 
-{% block titulo %}Nova trilha — SGIS{% endblock %}
+{% block titulo %}{% if trilha %}Editar trilha{% else %}Nova trilha{% endif %} — SGIS{% endblock %}
 
 {% block conteudo %}
 {% include 'partials/header.html' %}
 
 <main class="flex-1 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
-  <a href="{% url 'trilhas:minhas' %}" class="text-sm font-medium text-slate-500 hover:text-brand">&larr; Minhas trilhas</a>
+  {% if trilha %}
+    <a href="{% url 'trilhas:detalhe' trilha.pk %}" class="text-sm font-medium text-slate-500 hover:text-brand">&larr; {{ trilha.titulo }}</a>
+  {% else %}
+    <a href="{% url 'home' %}" class="text-sm font-medium text-slate-500 hover:text-brand">&larr; Início</a>
+  {% endif %}
 
   <div class="mt-4 bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm">
-    <h1 class="text-2xl font-bold text-slate-900">Nova trilha personalizada</h1>
-    <p class="text-slate-500 mt-1 text-sm">
-      Defina o título e a descrição. As atividades da trilha poderão ser adicionadas depois.
-    </p>
+    {% if trilha %}
+      <h1 class="text-2xl font-bold text-slate-900">Editar trilha</h1>
+      <p class="text-slate-500 mt-1 text-sm">Altere o título e a descrição da trilha.</p>
+    {% else %}
+      <h1 class="text-2xl font-bold text-slate-900">Nova trilha personalizada</h1>
+      <p class="text-slate-500 mt-1 text-sm">
+        Defina o título e a descrição. A trilha nasce em rascunho; as atividades são acrescentadas depois.
+      </p>
+    {% endif %}
 
     {% if form.non_field_errors %}
       <div class="mt-6 p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700" role="alert">
@@ -35,12 +44,16 @@
         </div>
       {% endfor %}
 
+      {% if exige_confirmacao %}
+        {% include 'partials/confirmacao_is.html' %}
+      {% endif %}
+
       <div class="flex items-center justify-end gap-3 pt-2">
-        <a href="{% url 'trilhas:minhas' %}" class="py-2.5 px-4 text-sm font-semibold text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition duration-150">
+        <a href="{% if trilha %}{% url 'trilhas:detalhe' trilha.pk %}{% else %}{% url 'home' %}{% endif %}" class="py-2.5 px-4 text-sm font-semibold text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition duration-150">
           Cancelar
         </a>
         <button type="submit" class="py-2.5 px-4 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-lg shadow-md shadow-brand/20 active:scale-[0.99] transition duration-150 cursor-pointer">
-          Criar trilha
+          {% if trilha %}Salvar{% else %}Criar trilha{% endif %}
         </button>
       </div>
     </form>

@@ -11,7 +11,7 @@
   <div class="mt-4 bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm">
     <h1 class="text-2xl font-bold text-slate-900">Novo usuário</h1>
     <p class="text-slate-500 mt-1 text-sm">
-      Crie contas de professores e de empreendimentos. Informe a senha inicial — o usuário poderá alterá-la depois.
+      Crie contas de professores e de empreendedores. Informe a senha inicial — o usuário vai trocá-la no primeiro acesso.
     </p>
 
     {% for mensagem in messages %}
@@ -44,6 +44,23 @@
         </div>
       {% endfor %}
 
+      {# ACE-05: o empreendedor é criado junto com o empreendimento. O servidor valida de qualquer forma. #}
+      <fieldset id="dados-empreendimento" class="space-y-5 pt-5 border-t border-slate-200">
+        <legend class="text-sm font-bold text-slate-900">Empreendimento</legend>
+        <p class="text-xs text-slate-500">Só para empreendedores: o empreendimento que esta pessoa representa.</p>
+        {% for campo in form_empreendimento %}
+          <div>
+            <label for="{{ campo.id_for_label }}" class="block text-sm font-semibold text-slate-700 mb-1.5">
+              {{ campo.label }}{% if campo.field.required %} <span class="text-red-500">*</span>{% endif %}
+            </label>
+            {{ campo }}
+            {% if campo.errors %}
+              <p class="text-xs text-red-600 font-medium mt-1.5">{{ campo.errors.0 }}</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </fieldset>
+
       <div class="flex items-center justify-end gap-3 pt-2">
         <a href="{% url 'home' %}" class="py-2.5 px-4 text-sm font-semibold text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition duration-150">
           Cancelar
@@ -55,4 +72,15 @@
     </form>
   </div>
 </main>
+
+<script>
+  // Mostra os campos do empreendimento só quando o perfil é empreendedor. Sem JavaScript, ficam visíveis.
+  (function () {
+    var papel = document.getElementById('{{ form.papel.id_for_label }}');
+    var dados = document.getElementById('dados-empreendimento');
+    function atualizar() { dados.hidden = papel.value !== 'empreendedor'; }
+    papel.addEventListener('change', atualizar);
+    atualizar();
+  })();
+</script>
 {% endblock %}

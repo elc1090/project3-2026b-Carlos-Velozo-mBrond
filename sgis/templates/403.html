@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block titulo %}Acesso negado — SGIS{% endblock %}
+
+{% block conteudo %}
+{% include 'partials/header.html' %}
+
+<main class="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+  <div class="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm">
+    <p class="text-sm font-semibold text-slate-400">Erro 403</p>
+    <h1 class="text-2xl font-bold text-slate-900 mt-1">Acesso negado</h1>
+    <p class="text-slate-500 mt-2">Você não tem permissão para abrir esta página.</p>
+
+    <div class="mt-6">
+      <a href="{% url 'home' %}" class="py-2.5 px-4 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-lg shadow-md shadow-brand/20 transition duration-150">
+        Voltar ao início
+      </a>
+    </div>
+  </div>
+</main>
+{% endblock %}

@@ -61,8 +61,10 @@ class CriarUsuarioTests(TestCase):
         self.assertTrue(self.client.login(email='maria@escola.com', password='senha-super-segura'))
 
     def test_is_cria_empreendedor(self):
+        # F1 · ACE-05: o empreendedor vem com os dados do empreendimento.
         resposta = self.client.post(URL, dados(
             nome='Ateliê da Praça', email='contato@atelie.com', papel=Usuario.Papel.EMPREENDEDOR,
+            **{'empreendimento-nome': 'Ateliê da Praça', 'empreendimento-tipo': 'Artesanato'},
         ))
 
         self.assertRedirects(resposta, URL)

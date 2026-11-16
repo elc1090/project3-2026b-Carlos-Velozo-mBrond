@@ -16,7 +16,7 @@ def inscrever_na_pre_incubacao(sender, instance, created, raw=False, **kwargs):
     if not created or raw:
         return
 
-    trilha = Trilha.objects.filter(pre_incubacao=True).first()
+    trilha = Trilha.objects.filter(etapa=Trilha.Etapa.PRE_INCUBACAO).first()
     if trilha is None:
         logger.warning(
             'Nenhuma trilha de pré-incubação definida; %s não foi inscrito.', instance,

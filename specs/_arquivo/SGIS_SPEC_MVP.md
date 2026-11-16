@@ -1,3 +1,5 @@
+> ⚠️ **Documento arquivado — não usar para implementar.** Substituído por [`SGIS_SPEC_MVP_v0.4.md`](../SGIS_SPEC_MVP_v0.4.md). Mantido apenas como registro histórico. Ver [`README.md`](README.md).
+
 # SGIS — Especificação do MVP
 
 **Versão:** 0.3 (rascunho para validação) 

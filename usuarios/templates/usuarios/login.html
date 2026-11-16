@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 
+{% load socialaccount %}
+
+
 {% block titulo %}Entrar — SGIS{% endblock %}
 {% block body_class %}bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-50 justify-center items-center p-4{% endblock %}
 
@@ -61,6 +64,22 @@
         Entrar
       </button>
     </form>
+
+    {% get_providers as provedores %}
+    {% if provedores %}
+      <div class="my-6 flex items-center gap-3 text-xs text-slate-400">
+        <span class="flex-1 border-t border-slate-200"></span>ou<span class="flex-1 border-t border-slate-200"></span>
+      </div>
+      <form method="post" action="{% provider_login_url 'google' %}">
+        {% csrf_token %}
+        <button type="submit" class="w-full py-3 px-4 border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50">
+          Entrar com Google
+        </button>
+      </form>
+    {%endif%}
+
+
+
 
     <div class="mt-8 pt-6 border-t border-slate-100 text-center">
       <a href="#" class="text-sm font-medium text-brand hover:underline">

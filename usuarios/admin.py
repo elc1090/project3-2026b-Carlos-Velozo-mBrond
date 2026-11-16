@@ -8,6 +8,13 @@ from .models import Usuario
 admin.site.unregister(Group)
 
 
+from allauth.account.models import EmailAddress
+from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
+
+for modelo in (EmailAddress, SocialAccount, SocialApp, SocialToken):
+    admin.site.unregister(modelo)
+
+
 @admin.register(Usuario)
 class UsuarioAdmin(BaseUserAdmin):
     list_display = ('email', 'nome', 'papel', 'is_active')

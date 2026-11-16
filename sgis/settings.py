@@ -51,6 +51,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Oauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
     # Apps do SGIS
     'usuarios',
     'empreendimentos',
@@ -70,6 +75,7 @@ MIDDLEWARE = [
     'sgis.middleware.ProtecaoLoginMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'sgis.urls'
@@ -169,6 +175,38 @@ if not DEBUG:
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',           # e-mail e senha
+    'allauth.account.auth_backends.AuthenticationBackend',  # Google
+]
+
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APPS': [{
+            'client_id': GOOGLE_CLIENT_ID,
+            'secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+        }] if GOOGLE_CLIENT_ID else [],
+        'SCOPE': ['openid', 'profile', 'email'],
+        'AUTH_PARAMS': {'prompt': 'select_account'},
+    },
+}
+
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*']
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+
+ACCOUNT_ADAPTER = 'usuarios.federado.ContaAdapter'
+SOCIALACCOUNT_ADAPTER = 'usuarios.federado.ContaFederadaAdapter'
+
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_LOGIN_ON_GET = False 
+
+
 
 
 # Email

@@ -13,6 +13,17 @@ from usuarios.views import login_view
 # Lista fechada da F0, 3.2. Acrescentar uma rota aqui é mudar a spec.
 ROTAS_PUBLICAS = {'login', 'saude', 'robots'}
 
+ROTAS_PUBLICAS_ALLAUTH = {
+    'para_login',
+    'account_login', 'account_signup', 'account_logout', 'account_inactive',
+    'account_email_verification_sent', 'account_confirm_login_code',
+    'account_reset_password', 'account_reset_password_done',
+    'account_reset_password_from_key_done',
+    'socialaccount_login_cancelled', 'socialaccount_signup',
+    'google_login', 'google_callback', 'google_login_by_token',
+}
+
+
 
 def view_sem_marcacao(request):
     return HttpResponse('dados')
@@ -219,7 +230,7 @@ class RotaNovaProtegidaTests(TestCase):
         rotas = list(percorrer_rotas(get_resolver().url_patterns))
         self.assertGreater(len(rotas), 0)
         for nome, caminho in rotas:
-            if nome in ROTAS_PUBLICAS:
+            if nome in ROTAS_PUBLICAS or nome in ROTAS_PUBLICAS_ALLAUTH:
                 continue
             with self.subTest(rota=nome, caminho=caminho):
                 resposta = self.client.get(caminho)

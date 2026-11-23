@@ -1,144 +1,153 @@
-# Projeto: SGIS — Sistema de Gestão da Incubadora Social
+# SGIS — Login federado com Google
 
-![GIF animado do projeto](./demonstracao.gif "GIF animado do SGIS em uso")
+![GIF animado do projeto](trabfinal.gif "GIF animado do SGIS em uso")
 
 ## Acesso
 
-link: [Deploy no render](https://sgis-1c45.onrender.com/)
-
-## Desenvolvedores
-
-Nomes: Carlos Eduardo Velozo, Miguel Brondani
+[https://sgis-i7an.onrender.com/](https://sgis-i7an.onrender.com/)
 
 
-Repositório original do projeto: https://github.com/IS-UFSM/SGIS
+## Desenvolvedor(a) / Desenvolvedor(es/as)
+
+- Miguel Brondani
 
 ## Proposta
 
-Implementação básica de login do sistema de gestão idealizado pela Incubadora Social. Criação de 3 tipos de usuários:
+**Continuação** do SGIS (Sistema de Gestão da Incubadora Social da UFSM), desenvolvido no projeto anterior. Este projeto acrescenta o **login federado com Google** (OAuth 2.0 / OpenID Connect).
 
-- **Empreendimento**: visualizar e marcar como feitas as atividades propostas pelo professor; visualizar acompanhamentos definidos pela incubadora.
-- **Professor**: visualizar os empreendimentos sob sua supervisão e suas situações; gerenciar atividades para cada empreendimento.
-- **Incubadora Social**: gerenciar e monitorar novos usuários; visualizar estatísticas gerais do sistema.
+O que foi feito:
+
+- **Entrar com Google** na tela de login, ao lado do e-mail e senha. Se a conta do SGIS já existe com o mesmo e-mail, o Google é ligado a ela automaticamente.
+- **Cadastro com aprovação:** um e-mail do Google sem conta no SGIS vira um cadastro de empreendedor **desativado**. A IS vê esses cadastros em *Usuários* como "Aguardando aprovação" e, ao aprovar, informa o empreendimento da pessoa: a conta é liberada e o empreendimento é criado junto, já inscrito na pré-incubação.
+- **Só empreendedores** entram pelo Google. Contas da IS, de professores e de admin continuam entrando só com senha.
+- **"Último usado":** a tela de login destaca o método usado no último acesso daquele navegador, guardado num cookie que não identifica a pessoa.
+- **Rotas do allauth fechadas:** páginas da biblioteca que contornariam regras do SGIS (redefinir senha por e-mail, trocar o e-mail da conta, desligar o Google da conta) respondem 404.
 
 ## Desenvolvimento
 
 ### Processo
 
-#### Organização da dupla: 
-Miguel já conhecia melhor o projeto, porque tinha participado do levantamento das regras com a Incubadora Social, então ficou com o papel de organizar o trabalho. Dividiu as funcionalidades em tarefas para cada um dos membros, de forma que fossem compatíveis com o objetivo do trabalho e, ao mesmo tempo, contribuíssem para o aprendizado de cada um. A modelagem dos dados foi feita principalmente pelo Lucas Benelli, atuante no projeto. Nessa primeira etapa não fizemos reuniões de andamento, apenas comunicávamos via whats quais funcionalidades deveriam ser implementadas e o andamento delas. 
+A primeira parte foi entender como o login federado ia se encaixar no SGIS. Comecei configurando o django-allauth com o provedor do Google, e qualquer pessoa que entrasse com uma conta Google virava automaticamente um empreendedor. Funcionou, mas essa escolha ia contra a regra de que quem decide quem entra no sistema é a IS.
 
-#### Relato Miguel:
-Como eu conhecia melhor o projeto, entendi que era o responsável por delegar as tarefas de cada um. Tentei fazer com que fôssemos "mais profissionais", seguindo padrões de mensagem de commit e boas práticas de versionamento, com uma branch e um pull request revisado para cada funcionalidade. Também me atentei mais à arquitetura do projeto, organizando-o em apps separados do Django (`usuarios`, `empreendimentos` e `trilhas`), além da documentação e dos testes. A maior dificuldade foi uma decisão de nomenclatura: o termo "empreendimento" era usado ao mesmo tempo para o negócio, para o papel de quem faz login e para o vínculo entre
-os dois, o que gerava dúvida na interpretação dos dados.
+Durante o desenvolvimento, fazendo login no GitHub, notei que ele marca com "Último usado" a forma de login da vez anterior. Quis entender como isso funcionava e reproduzi no SGIS. Usando Cookies, o último método de login fica salvo no computador. 
 
-#### Relato Carlos:
-A maior dificuldade que eu tive foi justamente essa: me integrar ao projeto e entender as regras de negócio. Como várias decisões já estavam tomadas quando eu entrei, precisei entender o "porquê" de cada uma antes de mexer.
+Fiz alguns testes de uso e identifiquei alguns erros: acesso indevido à algumas páginas, substituição de senhas de contas já criadas quando o login era feito pelo google.  
+Fechei as rotas desnecessárias e restringi o acesso via google para apenas empreendedores já cadastrados. Depois, percebi que poderia usar o sistema já existente de contas "ativas" e "desativadas": uma conta criada pelo google é automaticamente uma "desativada", apenas quando a IS "reativa" o usuário consegue fazer login. Ainda assim, o empreendedor não teria um empreendimento ligado a ele, de forma que o sistema se tornaria inútil para ele. Fiz com que houvesse uma pseudo categoria "aguardando aprovacao", resultado de ser uma conta criada com google + "desativada" + sem empreendimento registrado. Agora, quando a IS vai ativar um cadastro 'aguardando aprovação', precisa preencher o formulário do empreendimento daquele empreendedor.
+
+Usei o Claude durante todo o desenvolvimento, principalmente como revisor. Ele apontava os problemas, explicava o funcionamento e apresentava alternativas, e eu decidia o caminho.
+
+
 
 ### Trechos de código
 
-1. **`usuarios/decorators.py`**
+1. **`usuarios/federado.py`**
 
-   Esse foi o primeiro decorator que a gente escreveu do zero e levou um tempinho até ficar claro como uma função pode retornar outra função "embrulhando" a view. Ele primeiro aplica o `login_required` e só depois compara o papel, então a ordem dos decoradores importa de verdade, se trocasse daria erro tentando acessar `request.user.papel` de usuário anônimo.
-
-   ```python
-    def papel_requerido(*papeis):
-        def decorator(view_func):
-            @wraps(view_func)
-            @login_required
-            def _wrapped(request, *args, **kwargs):
-                if request.user.papel not in papeis:
-                    raise PermissionDenied
-                return view_func(request, *args, **kwargs)
-
-            return _wrapped
-
-        return decorator
-   ```
-
-2. **`trilhas/signals.py`**
-
-   A Incubadora pediu que todo empreendimento novo já entrasse na trilha de pré-incubação sem ninguém precisar fazer nada. A primeira ideia foi colocar isso dentro da view que cria o empreendimento, mas aí valeria só praquela view. Se o registro viesse do admin ou de outro lugar, não funcionaria. Foi quando apareceu o signal `post_save`. Demorou pra gente entender que ele dispara em **todo** `save()`, por isso tem o `if not created` ali em cima: sem isso, toda vez que o empreendimento fosse editado ele tentava se inscrever de novo.
+   O allauth tem uma proteção: quando liga um login do Google a uma conta que já existe pelo e-mail, e esse e-mail **não está marcado como verificado**, ele apaga a senha da conta. A ideia é impedir que alguém crie uma conta com o e-mail de outra pessoa, defina uma senha e espere a vítima entrar pelo Google. Só que no SGIS nenhum e-mail é "verificado": quem cria as contas é a IS. Resultado: no primeiro login pelo Google, a pessoa perdia a senha. Como o e-mail foi cadastrado pela IS (e o Google também o confirma), marcamos o endereço como verificado antes de o allauth decidir:
 
    ```python
-   @receiver(post_save, sender=Empreendimento)
-   def inscrever_na_pre_incubacao(sender, instance, created, raw=False, **kwargs):
-       if not created or raw:
+   def pre_social_login(self, request, sociallogin):
+       usuario = sociallogin.user
+       if usuario.pk is None:
            return
+       if usuario.papel != Usuario.Papel.EMPREENDEDOR:
+           self._recusar(request, 'O login com Google é só para empreendedores. Entre com e-mail e senha.')
 
-       trilha = Trilha.objects.filter(pre_incubacao=True).first()
-       if trilha is None:
-           logger.warning(
-               'Nenhuma trilha de pré-incubação definida; %s não foi inscrito.', instance,
-           )
-           return
+       if not usuario.is_active:
+           self._recusar(request, "Aguardando liberação pela Incubadora Social.")
 
-       Inscricao.objects.get_or_create(
-           empreendimento=instance,
-           trilha=trilha,
-           defaults={'status': Inscricao.Status.ATIVA},
+       EmailAddress.objects.update_or_create(
+           user=usuario, email=usuario.email, defaults={'verified': True, 'primary': True},
        )
    ```
 
-3. **`usuarios/views.py`**
+2. **`usuarios/federado.py`**
 
-   A aba "Minha conta" (`/conta/senha/`) deixa qualquer usuário logado trocar a própria senha, sem precisar passar pela IS. O detalhe que mais deu trabalho foi manter a sessão viva depois da troca: o Django guarda no cookie de sessão um hash da senha do usuário, então assim que a senha muda esse hash deixa de bater e a pessoa seria jogada para a tela de login no meio da própria troca. A solução é o `update_session_auth_hash`, que refaz esse hash dentro da sessão atual. O resto é o `set_password` (guarda com hash, nunca em texto puro) e a validação no formulário: a senha atual precisa estar certa, a confirmação tem que bater com a nova e a nova senha passa pelos validadores do `AUTH_PASSWORD_VALIDATORS` (tamanho mínimo, senha muito comum, só números e parecida com o e-mail).
+   Para o cadastro pelo Google depender da IS, a conta é criada normalmente pelo allauth e, logo em seguida, desativada. O detalhe é o `ImmediateHttpResponse`: é a forma do allauth de interromper o fluxo no meio e devolver outra resposta. Sem ele, o allauth tentaria fazer o login logo depois de criar a conta.
 
    ```python
-   @login_required
-   def trocar_senha_view(request):
-       """Usuário logado troca a própria senha (qualquer papel)."""
-       form = TrocarSenhaForm(request.POST or None, user=request.user)
+   def save_user(self, request, sociallogin, form=None):
+       usuario = super().save_user(request, sociallogin, form)
+       usuario.is_active = False
+       usuario.save(update_fields=['is_active'])
+       messages.success(request, 'Cadastro recebido. Aguarde a Incubadora Social liberar o seu acesso.')
+       raise ImmediateHttpResponse(redirect('login'))
+   ```
 
-       if request.method == 'POST' and form.is_valid():
-           request.user.set_password(form.cleaned_data['nova_senha'])
-           request.user.save(update_fields=['password'])
-           # O hash do usuário mudou: sem isto a sessão atual seria encerrada.
-           update_session_auth_hash(request, request.user)
-           messages.success(request, 'Senha alterada com sucesso.')
-           return redirect('trocar_senha')
+3. **`usuarios/regras.py`**
 
-       return render(request, 'usuarios/trocar_senha.html', {'form': form})
+   Não criamos um campo `status` no banco. "Aguardando aprovação" é calculado: empreendedor, desativado, ligado ao Google e ainda sem empreendimento. Assim que a IS aprova, o empreendimento passa a existir e a conta sai da fila sozinha. Uma conta que a IS desativou de propósito não tem Google ligado, então continua com o botão "Reativar". A aprovação usa `transaction.atomic`: ou a conta é liberada **e** o empreendimento é criado, ou nada acontece.
+
+   ```python
+   def aguardando_aprovacao():
+       return Usuario.objects.filter(
+           papel=Usuario.Papel.EMPREENDEDOR,
+           is_active=False,
+           socialaccount__isnull=False,
+           empreendimentos__isnull=True,
+       ).distinct()
+
+
+   @transaction.atomic
+   def aprovar_cadastro(conta, usuario, dados_empreendimento):
+       exigir_gestao(usuario, conta)
+       if not aguardando_aprovacao().filter(pk=conta.pk).exists():
+           raise RegraViolada("Conta não aguarda aprovação.")
+       conta.is_active = True
+       conta.save(update_fields=['is_active'])
+       return vincular_empreendimento(conta, dados_empreendimento)
+   ```
+
+4. **`usuarios/sinais.py` e `usuarios/middleware.py` — o selo "Último usado"**
+
+   O signal `user_logged_in` sabe **como** a pessoa entrou (pelo backend de autenticação), mas não tem acesso à resposta HTTP, onde o cookie é gravado. Por isso o signal só anota o método no `request`, e um middleware grava o cookie na saída. O cookie guarda só `senha` ou `google`, nunca o e-mail, e não é apagado no logout: é isso que faz o selo aparecer na próxima visita.
+
+   ```python
+   @receiver(user_logged_in)
+   def registrar_metodo_de_login(sender, request, user, **kwargs):
+       metodo = METODO_POR_BACKEND.get(getattr(user, 'backend', ''))
+       if metodo:
+           request.metodo_login = metodo
+   ```
+
+   ```python
+   def __call__(self, request):
+       response = self.get_response(request)
+       metodo = getattr(request, 'metodo_login', None)
+       if metodo:
+           response.set_cookie(COOKIE_METODO_LOGIN, metodo, max_age=60 * 60 * 24 * 31,
+                               httponly=True, samesite='Lax', secure=not settings.DEBUG)
+       return response
    ```
 
 ## Tecnologias
 
 ### Linguagens e afins
 
-- **Python 3.13** — linguagem do backend
-- **Django 6.1** — framework web full-stack (ORM, templates, migrations, admin, sessões, testes)
-- **HTML** com **Django Template Language** — páginas server-side
-- **Tailwind CSS** (via CDN) — estilização utilitária, sem build
-- **SQLite** — banco de dados (padrão do Django, trocável por Postgres/MySQL)
-- **Git/GitHub** — versionamento e revisão por pull requests
-
-### Autenticação e autorização
-
-- **Autenticação por sessão** (cookie de sessão gerenciado pelo `django.contrib.sessions`) — não usamos tokens/JWT, pois o app é 100% server-rendered.
-- **Modelo de usuário customizado** (`AUTH_USER_MODEL = 'usuarios.Usuario'`): login pelo **e-mail**, não por username, com senha armazenada com hash (PBKDF2) via `set_password`. A migration `0002` cria a conta inicial da IS. Em produção, o e-mail e a senha vêm das
-variáveis `IS_EMAIL` e `IS_SENHA_INICIAL`; sem a senha definida, a conta não é criada
-(nenhuma senha fica no repositório).
-- **Cadastro pela interface**: a IS cria contas de professor/empreendimento em `/usuarios/novo/`, definindo a senha inicial.
-- **Troca de senha pelo próprio usuário**: aba "Minha conta" em `/conta/senha/`, disponível para todos os papéis logados. Exige a senha atual, confirma a nova e passa a senha pelos validadores do Django; a sessão continua ativa depois da troca (`update_session_auth_hash`).
-- **Autorização por papel** (`admin`, `is`, `professor`, `empreendedor`): o decorator `papel_requerido` protege toda view restrita a um papel, e as demais páginas internas usam `login_required`. Usuário de outro papel recebe 403; visitante não logado é redirecionado ao login. A checagem é feita no servidor.
-- **Defesa em profundidade**: o formulário de cadastro restringe os papéis criáveis no servidor (a IS não cria IS/admin nem forjando o POST), e o CSRF token é exigido em todos os POSTs.
+- **Python 3.12+** e **Django 6.1**
+- **django-allauth 65**: Login federado com Google de provedor, com adapters próprios em `usuarios/federado.py`
+- **Google Identity (OAuth 2.0 / OpenID Connect)**: credenciais criadas no Google Cloud Console
+- **HTML** com **Django Template Language** e **Tailwind CSS** (via CDN) — páginas renderizadas no servidor
+- **SQLite** em desenvolvimento e **PostgreSQL** em produção (`dj-database-url`)
+- **Render**
+- **GitHub Actions** — a cada push roda a suíte de testes e confere migrações pendentes (`.github/workflows/testes.yml`)
 
 ### Ambiente de desenvolvimento
 
-- **Visual Studio Code**
-- **Python 3.13** com ambiente virtual (`.venv`)
-- **Terminal integrada do VS Code** para comandos `manage.py`
-- **Django admin** (`/admin/`) para inspeção/ajuste rápido de dados durante o desenvolvimento
-- **Testes automatizados** do Django (`python manage.py test`) — 50 testes cobrindo permissões, trilhas, inscrições e troca de senha
-- **GitHub** com trabalho em branches + pull requests
-- **Auxílio de IA** (OpenCode) para dúvidas pontuais de sintaxe e revisão — sempre validando o resultado com os testes e a documentação oficial
+- **Visual Studio Code**, com ambiente virtual Python (`venv`)
+- **Claude Code** (app desktop) — usado para revisar o código do login federado, encontrar falhas (rotas abertas do allauth, a senha apagada no primeiro login pelo Google, erro 500 sem credenciais), propor correções e escrever os testes que simulam o retorno do Google; tudo conferido com a suíte de testes e no navegador
+- **Testes automatizados** do Django (`python manage.py test`), incluindo `usuarios/test_federado.py` e `usuarios/test_aprovacao.py`
+- **DevTools do navegador** — para acompanhar o cookie `sgis_ultimo_login` (abas *Application* e *Network*)
+- **Git e GitHub**, com GitHub Actions
 
 ## Referências e créditos
-- Repositório do projeto (código-fonte completo): https://github.com/IS-UFSM/SGIS
-- Documentação oficial do Django: https://docs.djangoproject.com/ (custom user model, signals, constraints, testing)
-- Guia "Extending the User Model" do Django — https://docs.djangoproject.com/en/stable/topics/auth/customizing/
-- Tailwind CSS — https://tailwindcss.com/docs
-- Colégas da turma: dúvidas resolvidas em conversas sobre decorators e signals
+
+- Repositório original do SGIS: https://github.com/IS-UFSM/SGIS
+- Documentação do django-allauth: https://docs.allauth.org/ (provedor Google, adapters, *email authentication*)
+- Google Identity — OAuth 2.0 para aplicativos web: https://developers.google.com/identity/protocols/oauth2/web-server
+- Diretrizes de marca do botão "Sign in with Google": https://developers.google.com/identity/branding-guidelines
+- Documentação do Django: https://docs.djangoproject.com/ (signals, middleware, mensagens, testes)
+- Render — deploy de Django e blueprints: https://render.com/docs/deploy-django
+- MDN — cookies HTTP (`HttpOnly`, `SameSite`, `Secure`): https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Cookies
 
 ---
 Projeto entregue para a disciplina de [Desenvolvimento de Software para a Web](http://github.com/andreainfufsm/elc1090-2026b) em 2026b

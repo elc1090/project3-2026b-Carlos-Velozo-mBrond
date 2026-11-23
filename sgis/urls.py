@@ -6,7 +6,7 @@ from django.views.generic import RedirectView
 
 from usuarios import views
 
-from .views import admin_login_view, robots_view, saude_view
+from .views import admin_login_view, robots_view, saude_view, rota_desativada_view
 
 _para_login = login_not_required(RedirectView.as_view(pattern_name='login'))
 
@@ -30,6 +30,8 @@ urlpatterns = [
     path('', views.home_view, name='home'),
     path('accounts/login/', _para_login, name="para_login"),
     path('accounts/signup/', _para_login, name="para_login"),
+    re_path(r'^accounts/(password|email|confirm-email)/', rota_desativada_view),
+    path('accounts/3rdparty/', rota_desativada_view),
     path('accounts/', include('allauth.urls')),
 
 ]

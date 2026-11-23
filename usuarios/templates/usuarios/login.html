@@ -18,6 +18,10 @@
       <p class="text-sm text-slate-500 mt-1">Sistema de Gestão da Incubadora Social</p>
     </div>
 
+    {% for mensagem in messages %}
+      <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700" role="alert">{{ mensagem }}</div>
+    {% endfor %}
+
     {% if form.non_field_errors %}
       <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 flex flex-col gap-1" role="alert">
         {% for erro in form.non_field_errors %}

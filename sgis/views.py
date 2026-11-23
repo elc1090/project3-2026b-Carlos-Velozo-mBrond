@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_not_required
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
 
 from usuarios.views import proximo_seguro
@@ -23,3 +23,8 @@ def admin_login_view(request):
     if not request.user.is_staff:
         raise PermissionDenied
     return redirect(proximo_seguro(request) or 'admin:index')
+
+
+@login_not_required
+def rota_desativada_view(request, *args, **kwargs):
+    raise Http404

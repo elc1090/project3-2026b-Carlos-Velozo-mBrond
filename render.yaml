@@ -32,3 +32,7 @@ services:
         sync: false
       - key: IS_SENHA_INICIAL
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false

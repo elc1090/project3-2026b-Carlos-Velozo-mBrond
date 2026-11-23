@@ -19,7 +19,7 @@
     </div>
 
     {% for mensagem in messages %}
-      <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700" role="alert">{{ mensagem }}</div>
+      <div class="mb-6 p-4 rounded-xl text-sm {% if mensagem.tags == 'error' %}bg-red-50 border border-red-200 text-red-700{% else %}bg-emerald-50 border border-emerald-200 text-emerald-800{% endif %}" role="alert">{{ mensagem }}</div>
     {% endfor %}
 
     {% if form.non_field_errors %}

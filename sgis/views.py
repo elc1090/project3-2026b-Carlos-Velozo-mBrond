@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_not_required
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
+from django.contrib import messages
 
 from usuarios.views import proximo_seguro
 
@@ -28,3 +29,9 @@ def admin_login_view(request):
 @login_not_required
 def rota_desativada_view(request, *args, **kwargs):
     raise Http404
+
+@login_not_required
+def login_cancelado_view(request):
+    """Desistencia de login na tela do Google."""
+    messages.info(request, 'Login com Google cancelado.')
+    return redirect('login')

@@ -38,11 +38,13 @@ def login_view(request):
 
     form = LoginForm(data=request.POST or None, request=request)
 
+    ultimo = request.COOKIES.get('sgis_ultimo_login')
+
     if request.method == 'POST' and form.is_valid():
         login(request, form.get_user())
         return redirect(proximo_seguro(request) or 'home')
 
-    return render(request, 'usuarios/login.html', {'form': form})
+    return render(request, 'usuarios/login.html', {'form': form, 'ultimo_login': ultimo if ultimo in ('senha', 'google') else None})
 
 
 def logout_view(request):

@@ -72,9 +72,14 @@
       </div>
       <form method="post" action="{% provider_login_url 'google' %}">
         {% csrf_token %}
-        <button type="submit" class="w-full py-3 px-4 border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50">
-          Entrar com Google
-        </button>
+        <div class="relative">
+        {% if ultimo_login == 'google' %}
+          <span class="absolute -top-2.5 right-3 px-2 py-0.5 text-[11px] font-semibold rounded-full bg-brand text-white">
+            Último usado
+          </span>
+        {% endif %}
+        <button type="submit" class="...">Entrar com Google</button>
+      </div>
       </form>
     {%endif%}
 

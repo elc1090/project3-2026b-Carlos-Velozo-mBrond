@@ -33,7 +33,7 @@ urlpatterns = [
     path('accounts/signup/', _para_login, name="para_login"),
     re_path(r'^accounts/(password|email|confirm-email)/', rota_desativada_view),
     path('accounts/3rdparty/', rota_desativada_view),
-    path('accounts/3rdparty/login/cancelled/', login_cancelado_view),
+    path('accounts/3rdparty/login/cancelled/', login_cancelado_view, name='socialaccount_login_cancelled'),
     path('accounts/', include('allauth.urls')),
 
 ]

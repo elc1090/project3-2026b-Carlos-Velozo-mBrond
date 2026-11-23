@@ -23,6 +23,7 @@ urlpatterns = [
     path('usuarios/novo/', views.criar_usuario_view, name='criar_usuario'),
     path('usuarios/<int:pk>/editar/', views.editar_conta_view, name='editar_conta'),
     path('usuarios/<int:pk>/senha/', views.redefinir_senha_view, name='redefinir_senha'),
+    path('usuarios/<int:pk>/aprovar/', views.aprovar_cadastro_view, name='aprovar_cadastro'),
     re_path(r'^usuarios/(?P<pk>\d+)/(?P<acao>desativar|reativar)/$', views.alterar_conta_view,
             name='alterar_conta'),
     path('conta/senha/', views.trocar_senha_view, name='trocar_senha'),

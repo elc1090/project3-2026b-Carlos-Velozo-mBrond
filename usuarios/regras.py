@@ -56,6 +56,33 @@ def vincular_empreendimento(conta, dados_empreendimento):
     return Empreendimento.objects.create(representante=conta, **dados_empreendimento)
 
 
+def aguardando_aprovacao():
+    """Empreendedor cadastrado pelo Google que ainda não foi aprovado"""
+
+    return Usuario.objects.filter(
+        papel =Usuario.Papel.EMPREENDEDOR,
+        is_active=False,
+        socialaccount__isnull=False,
+        empreendimentos__isnull=True,
+    ).distinct()
+
+
+@transaction.atomic
+def aprovar_cadastro(conta, usuario, dados_empreendimento):
+    """Aprovar cadastro do google e cria o empreendimento dela"""
+
+    exigir_gestao(usuario, conta)
+    if not aguardando_aprovacao().filter(pk=conta.pk).exists():
+        raise RegraViolada("Conta não aguarda aprovação.")
+
+
+    conta.is_active = True
+    conta.save(update_fields=['is_active'])
+    return vincular_empreendimento(conta, dados_empreendimento)
+
+
+
+
 # Senha e situação da conta. Nada apaga conta (3.6.4).
 
 def redefinir_senha(conta, usuario, nova_senha):

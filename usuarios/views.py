@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_not_required, login_required
+from django.db.models import Exists, OuterRef
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
@@ -99,7 +100,11 @@ FILTROS_STATUS = {'ativa': True, 'desativada': False}
 @papel_requerido(Usuario.Papel.IS)
 def contas_view(request):
     """ACE-09 e A-14: professores e empreendedores, com filtros por papel e por status."""
-    contas = regras.contas_geridas(request.user).order_by('nome')
+
+    pendentes = regras.aguardando_aprovacao()
+    contas = regras.contas_geridas(request.user).order_by('nome').annotate(
+        pendente=Exists(pendentes.filter(pk=OuterRef('pk'))),
+        )
 
     papel = request.GET.get('papel', '')
     if papel in regras.PAPEIS_DA_IS:
@@ -108,7 +113,9 @@ def contas_view(request):
         papel = ''
 
     status = request.GET.get('status', '')
-    if status in FILTROS_STATUS:
+    if status == 'pendente':
+        contas = contas.filter(pendente=True)
+    elif status in FILTROS_STATUS:
         contas = contas.filter(is_active=FILTROS_STATUS[status])
     else:
         status = ''
@@ -117,7 +124,7 @@ def contas_view(request):
         'contas': contas,
         'papeis': [(valor, Usuario.Papel(valor).label) for valor in regras.PAPEIS_DA_IS],
         'papel_atual': papel,
-        'status': [('ativa', 'Ativas'), ('desativada', 'Desativadas')],
+        'status': [('ativa', 'Ativas'), ('desativada', 'Desativadas'), ('pendente', 'Aguardando aprovação')],
         'status_atual': status,
     })
 
@@ -183,3 +190,34 @@ def trocar_senha_view(request):
         return redirect('trocar_senha')
 
     return render(request, 'usuarios/trocar_senha.html', {'form': form})
+
+
+
+@papel_requerido(Usuario.Papel.IS)
+def aprovar_cadastro_view(request, pk):
+    conta = get_object_or_404(Usuario, pk=pk)
+
+    regras.exigir_gestao(request.user, conta)
+    if not regras.aguardando_aprovacao().filter(pk=conta.pk).exists():
+        messages.error(request, "Conta não aguarda aprovação. ")
+        return redirect('contas')
+
+    form = EmpreendimentoCadastroForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            regras.aprovar_cadastro(conta, request.user, form.cleaned_data)
+        except RegraViolada as e:
+            messages.error(request, str(e))
+        else:
+            messages.success(request, f'Cadastro de {conta.nome} aprovado')
+
+        return redirect('contas')
+
+
+    return render(request, 'usuarios/aprovar_cadastro.html', {'form': form, 'conta': conta})
+
+
+
+
+
+

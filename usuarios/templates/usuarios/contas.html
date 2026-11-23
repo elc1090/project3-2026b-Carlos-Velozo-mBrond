@@ -54,6 +54,10 @@
             {{ conta.get_papel_display }} · criada em {{ conta.criado_em|date:"d/m/Y" }} ·
             {% if conta.is_active %}
               <span class="font-semibold text-emerald-700">Ativa</span>
+            
+            {% elif conta.pendente %}
+              <span class="font-semibold text-amber-700">Aguardando aprovação</span> · cadastro pelo Google
+
             {% else %}
               <span class="font-semibold text-slate-600">Desativada</span>
             {% endif %}
@@ -62,12 +66,18 @@
         <div class="flex flex-wrap items-center gap-2">
           <a href="{% url 'editar_conta' conta.pk %}" class="py-1.5 px-3 text-xs font-semibold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition duration-150">Editar</a>
           <a href="{% url 'redefinir_senha' conta.pk %}" class="py-1.5 px-3 text-xs font-semibold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition duration-150">Redefinir senha</a>
-          <form method="post" action="{% url 'alterar_conta' conta.pk conta.is_active|yesno:'desativar,reativar' %}">
+          
+          {% if conta.pendente %}
+            <a href="{% url 'aprovar_cadastro' conta.pk %}" class="py-1.5 px-3 text-xs font-semibold text-emerald-800 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition duration-150">Aprovar</a>
+          {% else %}
+            <form method="post" action="{% url 'alterar_conta' conta.pk conta.is_active|yesno:'desativar,reativar' %}">
             {% csrf_token %}
-            <button type="submit" class="py-1.5 px-3 text-xs font-semibold rounded-lg border transition duration-150 cursor-pointer {% if conta.is_active %}text-red-700 border-red-200 hover:bg-red-50{% else %}text-emerald-800 border-emerald-200 hover:bg-emerald-50{% endif %}">
-              {{ conta.is_active|yesno:"Desativar,Reativar" }}
+              <button type="submit" class="py-1.5 px-3 text-xs font-semibold rounded-lg border transition duration-150 cursor-pointer {% if conta.is_active %}text-red-700 border-red-200 hover:bg-red-50{% else %}text-emerald-800 border-emerald-200 hover:bg-emerald-50{% endif %}">
+                {{ conta.is_active|yesno:"Desativar,Reativar" }}
             </button>
-          </form>
+          </form>          {% endif %}
+          
+          
         </div>
       </div>
     {% empty %}
